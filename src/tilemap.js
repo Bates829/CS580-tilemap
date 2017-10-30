@@ -1,3 +1,5 @@
+import zlib from 'zlib';
+
 export default class Tilemap {
   constructor(tilemapData) {
     this.images = [];
@@ -31,33 +33,63 @@ export default class Tilemap {
     });
 
     // Load the map layer data
+	tilmapData.layers.forEach((layer) => {
+		switch(layer.type) {
+			case 'tilelayer':
+				const gzip = zlib.createGzip();
+				var data = zlib.unzip(layer.data, (data, err) => {
+				if(err) return console.log(err);
+				
+				if(this.tiles.length < 255){
+					data = new Uint8Array(data);
+				}
+				else if(this.tiles.length < 65535){
+					data = new Uint16Array(data);
+				}
+				else if(this.tiles.length < 4294967295){
+					data = new Uint32Array(data)
+				}
+				else throw "Tile indices too large to store.";
+				var newLayer = {
+					name: layer.name,
+					data: data
+				}
+				layers.push(newLayer);
+			});
+				
+				break;
+			default:
+				console.log("Unknown Layer Type: ", layer.type);
+				break;
+		}
     // CHEAT: Assume only one layer
     // NOTE: we can use a typed array for better efficiency
-    this.data = new Uint8Array(tilemapData.layers[0].data);
-  }
+}
 
   render(ctx) {
-    for(let y = 0; y < this.mapHeight; y++) {
-      for(let x = 0; x < this.mapWidth; x++) {
-        var tileIndex = this.data[y * this.mapWidth + x];
-        if(tileIndex === 0) continue; // Skip non-existant tiles
-        var tile = this.tiles[tileIndex];
-        if(!tile.image) continue; // Don't draw a non-existant image
-        ctx.drawImage(
-          // The source image
-          tile.image,
-          // The portion of the source image to draw
-          tile.sx,
-          tile.sy,
-          this.tileWidth,
-          this.tileHeight,
-          // Where to draw the tile on-screen
-          x * this.tileWidth,
-          y * this.tileHeight,
-          this.tileWidth,
-          this.tileHeight
-        );
-      }
-    }
-  }
+	this.layers.forEach((layer) => {
+			console.log(layer);
+		for(let y = 0; y < this.mapHeight; y++) {
+		  for(let x = 0; x < this.mapWidth; x++) {
+			var tileIndex = this.data[y * this.mapWidth + x];
+			if(tileIndex === 0) continue; // Skip non-existant tiles
+			var tile = this.tiles[tileIndex];
+			if(!tile.image) continue; // Don't draw a non-existant image
+			ctx.drawImage(
+			  // The source image
+			  tile.image,
+			  // The portion of the source image to draw
+			  tile.sx,
+			  tile.sy,
+			  this.tileWidth,
+			  this.tileHeight,
+			  // Where to draw the tile on-screen
+			  x * this.tileWidth,
+			  y * this.tileHeight,
+			  this.tileWidth,
+			  this.tileHeight
+			);
+		  }
+		}
+	});
 }
